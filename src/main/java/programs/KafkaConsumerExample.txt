@@ -1,0 +1,54 @@
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Properties;
+
+public class KafkaConsumerExample {
+    public static void main(String[] args) {
+        // Set the Kafka consumer properties
+        Properties properties = new Properties();
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "your-kafka-server1:9092,your-kafka-server2:9092");
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "your-consumer-group");
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        // Set the authentication properties
+        properties.put("security.protocol", "SASL_PLAINTEXT");
+        properties.put("sasl.mechanism", "SCRAM-SHA-512");
+        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.scram.ScramLoginModule required " +
+                "username=\"your-username\" password=\"your-password\";");
+
+        // Create a Kafka consumer
+        Consumer<String, String> consumer = new KafkaConsumer<>(properties);
+
+        // Subscribe to a Kafka topic
+        String topic = "your-topic";
+        consumer.subscribe(Collections.singletonList(topic));
+
+        // Assign specific partitions to the consumer
+        // Uncomment the lines below if you want to consume from specific partitions
+        /*
+        TopicPartition partition0 = new TopicPartition(topic, 0);
+        TopicPartition partition1 = new TopicPartition(topic, 1);
+        consumer.assign(Arrays.asList(partition0, partition1));
+        */
+
+        // Poll for new messages
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            for (ConsumerRecord<String, String> record : records) {
+                String value = record.value();
+
+                // Print the message value
+                System.out.println("Received message: " + value);
+            }
+        }
+    }
+}
