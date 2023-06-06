@@ -1,0 +1,97 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Properties;
+import org.apache.kafka.clients.producer.*;
+
+public class KafkaProducerSwingUI {
+    private JFrame frame;
+    private JTextField bootstrapServersTextField;
+    private JTextField topicTextField;
+    private JTextField keyTextField;
+    private JTextField valueTextField;
+    private JButton sendButton;
+
+    public KafkaProducerSwingUI() {
+        initializeUI();
+    }
+
+    private void initializeUI() {
+        // Create the main frame
+        frame = new JFrame("Kafka Producer");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new GridLayout(5, 2));
+
+        // Create labels and text fields
+        JLabel bootstrapServersLabel = new JLabel("Bootstrap Servers:");
+        bootstrapServersTextField = new JTextField();
+        JLabel topicLabel = new JLabel("Topic:");
+        topicTextField = new JTextField();
+        JLabel keyLabel = new JLabel("Key:");
+        keyTextField = new JTextField();
+        JLabel valueLabel = new JLabel("Value:");
+        valueTextField = new JTextField();
+
+        // Create the Send button
+        sendButton = new JButton("Send");
+        sendButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                sendButton.setEnabled(false);
+                sendToKafka();
+            }
+        });
+
+        // Add components to the frame
+        frame.add(bootstrapServersLabel);
+        frame.add(bootstrapServersTextField);
+        frame.add(topicLabel);
+        frame.add(topicTextField);
+        frame.add(keyLabel);
+        frame.add(keyTextField);
+        frame.add(valueLabel);
+        frame.add(valueTextField);
+        frame.add(new JLabel()); // Empty label for spacing
+        frame.add(sendButton);
+
+        // Set frame properties
+        frame.pack();
+        frame.setVisible(true);
+    }
+
+    private void sendToKafka() {
+        String bootstrapServers = bootstrapServersTextField.getText();
+        String topic = topicTextField.getText();
+        String key = keyTextField.getText();
+        String value = valueTextField.getText();
+
+        Properties properties = new Properties();
+        properties.put("bootstrap.servers", bootstrapServers);
+        properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+
+        Producer<String, String> producer = new KafkaProducer<>(properties);
+
+        try {
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
+            producer.send(record);
+            JOptionPane.showMessageDialog(frame, "Data sent successfully to Kafka!");
+            System.out.println("Data sent successfully to Kafka!");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(frame, "Failed to send data to Kafka!");
+            System.out.println("Failed to send data to Kafka!");
+            e.printStackTrace();
+        } finally {
+            producer.close();
+            sendButton.setEnabled(true);
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                new KafkaProducerSwingUI();
+            }
+        });
+    }
+}
