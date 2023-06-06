@@ -1,0 +1,56 @@
+To include JavaFX libraries and run your application using a JAR file, you'll need to perform a few additional steps. Starting from JDK 11, JavaFX is no longer bundled with the JDK, so you need to include the necessary JavaFX libraries in your project and specify them while running the JAR.
+
+Here's a step-by-step guide:
+
+1. Set up your project structure: Create a directory structure for your project, with separate folders for source code (`src`), dependencies (`lib`), and build artifacts (`out` or `target`). Place your Java files in the `src` folder.
+
+2. Download JavaFX libraries: Download the JavaFX libraries from the OpenJFX website (https://openjfx.io/). Make sure to download the version that matches your JDK version and operating system.
+
+3. Add JavaFX libraries to the project: Place the downloaded JavaFX libraries (`javafx.base.jar`, `javafx.controls.jar`, `javafx.fxml.jar`, `javafx.graphics.jar`, `javafx.media.jar`, `javafx.swing.jar`, and `javafx.web.jar`) into the `lib` folder of your project.
+
+4. Configure build tool: If you're using a build tool like Maven or Gradle, update your build configuration file (e.g., `pom.xml` for Maven) to include the JavaFX libraries as dependencies. Specify the `lib` folder as a repository or dependency source. For example, in Maven, you can use the `systemPath` property to reference the JavaFX libraries:
+
+```xml
+<dependency>
+    <groupId>org.openjfx</groupId>
+    <artifactId>javafx-base</artifactId>
+    <version>your-javafx-version</version>
+    <scope>system</scope>
+    <systemPath>${project.basedir}/lib/javafx.base.jar</systemPath>
+</dependency>
+<!-- Repeat for other JavaFX libraries -->
+```
+
+If you're not using a build tool, you'll need to manually include the JavaFX libraries in the classpath while building and running your JAR.
+
+5. Build the JAR: Use your build tool or a command-line tool (e.g., `javac` and `jar` commands) to compile your Java files and package them into a JAR file. Include the JavaFX libraries in the classpath during compilation. For example, using the `javac` command:
+
+```
+javac -cp lib/javafx.base.jar:lib/javafx.controls.jar:lib/javafx.fxml.jar:lib/javafx.graphics.jar -d out src/*.java
+```
+
+Then, create the JAR file:
+
+```
+jar cfm your-app.jar manifest.txt -C out .
+```
+
+Make sure to replace `your-app.jar` with the desired name for your JAR file.
+
+6. Create a manifest file: Create a text file named `manifest.txt` and specify the main class for your application:
+
+```
+Main-Class: com.yourpackage.YourMainClass
+```
+
+Replace `com.yourpackage.YourMainClass` with the actual package and class name of your main class.
+
+7. Run the JAR: Execute the JAR file using the `java` command, and include the JavaFX modules in the module path using the `--module-path` flag. Specify the main class using the `-jar` flag. For example:
+
+```
+java --module-path lib --add-modules javafx.controls,javafx.fxml -jar your-app.jar
+```
+
+Replace `your-app.jar` with the name of your JAR file.
+
+By following these steps, you should be able to include JavaFX libraries in your project and run your application using a JAR file.
