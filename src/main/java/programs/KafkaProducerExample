@@ -1,0 +1,36 @@
+import java.util.Properties;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+public class KafkaProducerExample {
+    private static final String TOPIC_NAME = "your-topic-name";
+    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    
+    public static void main(String[] args) {
+        // Configure the producer
+        Properties props = new Properties();
+        props.put("bootstrap.servers", BOOTSTRAP_SERVERS);
+        props.put("key.serializer", StringSerializer.class.getName());
+        props.put("value.serializer", StringSerializer.class.getName());
+
+        Producer<String, String> producer = new KafkaProducer<>(props);
+
+        try {
+            // Create a producer record with the topic name and the data to be sent
+            String key = "your-key";
+            String value = "your-data";
+            ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC_NAME, key, value);
+            
+            // Send the record to the Kafka topic
+            producer.send(record);
+            System.out.println("Data sent successfully to the Kafka topic: " + TOPIC_NAME);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            // Close the producer
+            producer.close();
+        }
+    }
+}
