@@ -132,3 +132,24 @@ public class KafkaConsumerUI extends JFrame {
         });
     }
 }
+_________________________________________________________________________________
+startButton.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String environment = environmentComboBox.getSelectedItem().toString();
+        String topic = topicTextField.getText();
+        int messageCount = Integer.parseInt(messageCountTextField.getText());
+        if (environment.equals("dev") && topic != null && !topic.isEmpty() && messageCount > 0) {
+            Properties kafkaProps = new Properties();
+            kafkaProps.setProperty("bootstrap.servers", "dev:localhost:9096");
+            kafkaProps.setProperty("security.protocol", "SASL_PLAINTEXT");
+            kafkaProps.setProperty("sasl.mechanism", "PLAIN");
+            kafkaProps.setProperty("key.deserializer", StringDeserializer.class.getName());
+            kafkaProps.setProperty("value.deserializer", StringDeserializer.class.getName());
+            // Set other required properties
+
+            kafkaProps.setProperty("topic.name", topic);
+            startConsumer(kafkaProps, messageCount);
+        }
+    }
+});
