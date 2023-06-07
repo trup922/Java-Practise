@@ -1,0 +1,125 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.*;
+import org.apache.kafka.common.serialization.*;
+
+public class KafkaConsumerUI extends JFrame {
+    private DefaultListModel<String> messageListModel;
+    private JList<String> messageList;
+    private JComboBox<String> serverComboBox;
+    private JComboBox<String> topicComboBox;
+
+    public KafkaConsumerUI(Properties kafkaProps) {
+        super("Kafka Consumer UI");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Initialize message list model and list
+        messageListModel = new DefaultListModel<>();
+        messageList = new JList<>(messageListModel);
+        JScrollPane scrollPane = new JScrollPane(messageList);
+        add(scrollPane, BorderLayout.CENTER);
+
+        // Create server selection panel
+        JPanel serverPanel = new JPanel();
+        serverPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JLabel serverLabel = new JLabel("Server:");
+        serverComboBox = new JComboBox<>();
+        serverPanel.add(serverLabel);
+        serverPanel.add(serverComboBox);
+        add(serverPanel, BorderLayout.NORTH);
+
+        // Create topic selection panel
+        JPanel topicPanel = new JPanel();
+        topicPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JLabel topicLabel = new JLabel("Topic:");
+        topicComboBox = new JComboBox<>();
+        topicPanel.add(topicLabel);
+        topicPanel.add(topicComboBox);
+        add(topicPanel, BorderLayout.SOUTH);
+
+        // Fetch available topics from Kafka
+        fetchTopics(kafkaProps);
+
+        // Add event listener for topic selection
+        topicComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedTopic = (String) topicComboBox.getSelectedItem();
+                if (selectedTopic != null) {
+                    kafkaProps.put("topic.name", selectedTopic);
+                    startConsumer(kafkaProps);
+                }
+            }
+        });
+
+        // Add event listener for server selection
+        serverComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedServer = (String) serverComboBox.getSelectedItem();
+                if (selectedServer != null) {
+                    kafkaProps.put("bootstrap.servers", selectedServer);
+                    fetchTopics(kafkaProps);
+                }
+            }
+        });
+    }
+
+    private void fetchTopics(Properties kafkaProps) {
+        try (AdminClient adminClient = AdminClient.create(kafkaProps)) {
+            ListTopicsResult topicsResult = adminClient.listTopics();
+            Set<String> topicNames = topicsResult.names().get();
+            topicComboBox.removeAllItems();
+            for (String topicName : topicNames) {
+                topicComboBox.addItem(topicName);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startConsumer(Properties kafkaProps) {
+        // Kafka consumer configuration
+        kafkaProps.put("key.deserializer", StringDeserializer.class.getName());
+        kafkaProps.put("value.deserializer", StringDeserializer.class.getName());
+
+        // Create Kafka consumer
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(kafkaProps);
+
+        // Subscribe to the topic
+        String topic = (String) topicComboBox.getSelectedItem();
+        if (topic != null) {
+            consumer.subscribe(Collections.singletonList(topic));
+        }
+
+        // Read messages from Kafka and update the UI
+        new Thread(() -> {
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                for (ConsumerRecord<String, String> record : records) {
+                    String message = String.format("Partition: %d, Key: %s, Value: %s",
+                            record.partition(), record.key(), record.value());
+                    SwingUtilities.invokeLater(() -> messageListModel.insertElementAt(message, 0));
+                }
+            }
+        }).start();
+    }
+
+    public static void main(String[] args) {
+        // Kafka configuration properties
+        Properties kafkaProps = new Properties();
+        kafkaProps.put("group.id", "my-group-id");
+        // Add other required properties
+
+        SwingUtilities.invokeLater(() -> {
+            KafkaConsumerUI consumerUI = new KafkaConsumerUI(kafkaProps);
+            consumerUI.setSize(800, 600);
+            consumerUI.setVisible(true);
+        });
+    }
+}
