@@ -1,0 +1,144 @@
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+
+// ...
+
+public class KafkaProducerExample extends JFrame {
+    private static final String TOPIC_NAME_FILE = "topic_name.txt";
+    private static final String DEFAULT_TOPIC_NAME = "your-default-topic-name";
+
+    // ...
+
+    private void addComponentsToPane() {
+        // ...
+
+        // Topic Name
+        JLabel topicLabel = new JLabel("Topic Name:");
+        constraints.gridx = 0;
+        constraints.gridy = 1;
+        panel.add(topicLabel, constraints);
+
+        JTextField topicInput = new JTextField(20);
+        topicInput.setToolTipText("Topic Name");
+        constraints.gridx = 1;
+        constraints.gridy = 1;
+        panel.add(topicInput, constraints);
+
+        // Load the saved topic name from the file
+        String savedTopicName = loadSavedTopicName();
+        if (savedTopicName != null) {
+            topicInput.setText(savedTopicName);
+        }
+
+        // ...
+
+        // Save the topic name when the Send button is clicked
+        sendButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String bootstrapServers = bootstrapInput.getText();
+                String topicName = topicInput.getText();
+                String key = keyInput.getText();
+                String value = valueInput.getText();
+
+                saveTopicName(topicName); // Save the topic name
+
+                sendToKafka(bootstrapServers, topicName, key, value);
+            }
+        });
+
+        // ...
+    }
+
+    private void saveTopicName(String topicName) {
+        try {
+            // Create the file if it doesn't exist
+            File file = new File(TOPIC_NAME_FILE);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+
+            // Write the topic name to the file
+            Path path = Paths.get(TOPIC_NAME_FILE);
+            Files.write(path, topicName.getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String loadSavedTopicName() {
+        try {
+            // Read the topic name from the file
+            Path path = Paths.get(TOPIC_NAME_FILE);
+            byte[] bytes = Files.readAllBytes(path);
+            return new String(bytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // ...
+}
+
+
+
+
+
+///////////////////////////////////////////////////////////////////
+import javax.swing.JComboBox;
+
+// ...
+
+private void addComponentsToPane() {
+    // ...
+
+    // Topic Name
+    JLabel topicLabel = new JLabel("Topic Name:");
+    constraints.gridx = 0;
+    constraints.gridy = 1;
+    panel.add(topicLabel, constraints);
+
+    JComboBox<String> topicDropdown = new JComboBox<>();
+    topicDropdown.setToolTipText("Topic Name");
+    constraints.gridx = 1;
+    constraints.gridy = 1;
+    panel.add(topicDropdown, constraints);
+
+    // Load the saved topic names and add them to the dropdown
+    List<String> savedTopicNames = loadSavedTopicNames();
+    if (savedTopicNames != null && !savedTopicNames.isEmpty()) {
+        for (String topicName : savedTopicNames) {
+            topicDropdown.addItem(topicName);
+        }
+    }
+
+    // ...
+
+    // Set the selected topic name when the dropdown selection changes
+    topicDropdown.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+            String selectedTopic = (String) topicDropdown.getSelectedItem();
+            if (selectedTopic != null) {
+                topicInput.setText(selectedTopic);
+            }
+        }
+    });
+
+    // ...
+}
+
+private List<String> loadSavedTopicNames() {
+    try {
+        // Read the saved topic names from the file
+        Path path = Paths.get(TOPIC_NAME_FILE);
+        List<String> topicNames = Files.readAllLines(path);
+        return topicNames;
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
