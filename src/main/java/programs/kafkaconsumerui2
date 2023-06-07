@@ -1,0 +1,175 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.*;
+import org.apache.kafka.common.serialization.*;
+
+public class KafkaConsumerUI extends JFrame {
+    private DefaultListModel<String> messageListModel;
+    private JList<String> messageList;
+    private JComboBox<String> serverComboBox;
+    private JComboBox<String> topicComboBox;
+    private Properties kafkaProps;
+
+    public KafkaConsumerUI() {
+        super("Kafka Consumer UI");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Initialize message list model and list
+        messageListModel = new DefaultListModel<>();
+        messageList = new JList<>(messageListModel);
+        JScrollPane scrollPane = new JScrollPane(messageList);
+        add(scrollPane, BorderLayout.CENTER);
+
+        // Create server selection panel
+        JPanel serverPanel = new JPanel();
+        serverPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JLabel serverLabel = new JLabel("Environment:");
+        serverComboBox = new JComboBox<>();
+        serverPanel.add(serverLabel);
+        serverPanel.add(serverComboBox);
+        add(serverPanel, BorderLayout.NORTH);
+
+        // Create topic selection panel
+        JPanel topicPanel = new JPanel();
+        topicPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JLabel topicLabel = new JLabel("Topic:");
+        topicComboBox = new JComboBox<>();
+        topicPanel.add(topicLabel);
+        topicPanel.add(topicComboBox);
+        add(topicPanel, BorderLayout.SOUTH);
+
+        // Add event listener for topic selection
+        topicComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedTopic = (String) topicComboBox.getSelectedItem();
+                if (selectedTopic != null) {
+                    kafkaProps.put("topic.name", selectedTopic);
+                    startConsumer();
+                }
+            }
+        });
+
+        // Add event listener for environment selection
+        serverComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedEnvironment = (String) serverComboBox.getSelectedItem();
+                if (selectedEnvironment != null) {
+                    String serverValue = getServerValueForEnvironment(selectedEnvironment);
+                    if (serverValue != null) {
+                        kafkaProps.put("bootstrap.servers", serverValue);
+                        fetchTopics();
+                    }
+                }
+            }
+        });
+    }
+
+    private String getServerValueForEnvironment(String environment) {
+        switch (environment) {
+            case "dev":
+                return "localhost:9096";
+            case "test":
+                return "test-server:9092";
+            case "preprod":
+                return "preprod-server:9092";
+            default:
+                return null;
+        }
+    }
+
+    private void fetchTopics() {
+        try (AdminClient adminClient = AdminClient.create(kafkaProps)) {
+            ListTopicsResult topicsResult = adminClient.listTopics();
+            Set<String> topicNames = topicsResult.names().get();
+            topicComboBox.removeAllItems();
+            for (String topicName : topicNames) {
+                topicComboBox.addItem(topicName);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startConsumer() {
+        // Kafka consumer configuration
+        kafkaProps.put("key.deserializer", StringDeserializer.class.getName());
+        kafkaProps.put("value.deserializer", StringDeserializer.class.getName());
+
+        // Create Kafka consumer
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(kafkaProps);
+
+        // Subscribe to the topic
+        String topic = (String) topicComboBox.getSelectedItem();
+        if (topic != null) {
+            consumer.subscribe(Collections.singletonList(topic));
+        }
+
+        // Read messages from Kafka and update the UI
+        new Thread(() -> {
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                for (ConsumerRecord<String, String> record : records) {
+                    String message = String.format("Partition: %d, Key: %s, Value: %s",
+                            record.partition(), record.key(), record.value());
+                    SwingUtilities.invokeLater(() -> messageListModel.insertElementAt(message, 0));
+                }
+            }
+        }).start();
+    }
+
+    public void setEnvironmentList(List<String> environments) {
+        serverComboBox.removeAllItems();
+        for (String environment : environments) {
+            serverComboBox.addItem(environment);
+        }
+        serverComboBox.setSelectedIndex(0);
+    }
+
+    public void setKafkaProperties(Properties kafkaProps) {
+        this.kafkaProps = kafkaProps;
+        String bootstrapServers = kafkaProps.getProperty("bootstrap.servers");
+        if (bootstrapServers != null) {
+            // Set the selected environment based on the server value
+            String selectedEnvironment = getEnvironmentForServerValue(bootstrapServers);
+            if (selectedEnvironment != null) {
+                serverComboBox.setSelectedItem(selectedEnvironment);
+            }
+        }
+        fetchTopics();
+    }
+
+    private String getEnvironmentForServerValue(String serverValue) {
+        if (serverValue.equals("localhost:9096")) {
+            return "dev";
+        } else if (serverValue.equals("test-server:9092")) {
+            return "test";
+        } else if (serverValue.equals("preprod-server:9092")) {
+            return "preprod";
+        } else {
+            return null;
+        }
+    }
+
+    public static void main(String[] args) {
+        // Kafka configuration properties
+        Properties kafkaProps = new Properties();
+        kafkaProps.put("group.id", "my-group-id");
+        // Add other required properties
+
+        SwingUtilities.invokeLater(() -> {
+            KafkaConsumerUI consumerUI = new KafkaConsumerUI();
+            List<String> environments = Arrays.asList("dev", "test", "preprod");
+            consumerUI.setEnvironmentList(environments);
+            consumerUI.setKafkaProperties(kafkaProps);
+            consumerUI.setSize(800, 600);
+            consumerUI.setVisible(true);
+        });
+    }
+}
