@@ -1,0 +1,134 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.*;
+import org.apache.kafka.common.serialization.*;
+
+public class KafkaConsumerUI extends JFrame {
+    private DefaultListModel<String> messageListModel;
+    private JList<String> messageList;
+    private JTextField topicTextField;
+    private JTextField messageCountTextField;
+    private JComboBox<String> serverComboBox;
+    private Properties kafkaProps;
+
+    public KafkaConsumerUI() {
+        super("Kafka Consumer UI");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Initialize Kafka properties
+        kafkaProps = new Properties();
+
+        // Initialize message list model and list
+        messageListModel = new DefaultListModel<>();
+        messageList = new JList<>(messageListModel);
+        JScrollPane scrollPane = new JScrollPane(messageList);
+        add(scrollPane, BorderLayout.CENTER);
+
+        // Create server selection panel
+        JPanel serverPanel = new JPanel();
+        serverPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JLabel serverLabel = new JLabel("Environment:");
+        serverComboBox = new JComboBox<>();
+        serverPanel.add(serverLabel);
+        serverPanel.add(serverComboBox);
+        add(serverPanel, BorderLayout.NORTH);
+
+        // Create input panel
+        JPanel inputPanel = new JPanel();
+        inputPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JLabel topicLabel = new JLabel("Topic:");
+        topicTextField = new JTextField(20);
+        JLabel messageCountLabel = new JLabel("Message Count:");
+        messageCountTextField = new JTextField(10);
+        JButton startButton = new JButton("Start");
+        inputPanel.add(topicLabel);
+        inputPanel.add(topicTextField);
+        inputPanel.add(messageCountLabel);
+        inputPanel.add(messageCountTextField);
+        inputPanel.add(startButton);
+        add(inputPanel, BorderLayout.SOUTH);
+
+        // Add event listener for start button
+        startButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String topic = topicTextField.getText();
+                int messageCount = Integer.parseInt(messageCountTextField.getText());
+                if (topic != null && !topic.isEmpty() && messageCount > 0) {
+                    kafkaProps.setProperty("topic.name", topic);
+                    startConsumer(messageCount);
+                }
+            }
+        });
+
+        // Add event listener for environment selection
+        serverComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedEnvironment = (String) serverComboBox.getSelectedItem();
+                if (selectedEnvironment != null) {
+                    String serverValue = getServerValueForEnvironment(selectedEnvironment);
+                    if (serverValue != null) {
+                        kafkaProps.setProperty("bootstrap.servers", serverValue);
+                    }
+                }
+            }
+        });
+    }
+
+    private void startConsumer(int messageCount) {
+        // Create Kafka consumer
+        try (Consumer<String, String> consumer = new KafkaConsumer<>(kafkaProps)) {
+            // Subscribe to the topic
+            consumer.subscribe(Collections.singletonList(kafkaProps.getProperty("topic.name")));
+
+            // Read messages from Kafka and update the UI
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            for (ConsumerRecord<String, String> record : records) {
+                String message = String.format("Partition: %d, Key: %s, Value: %s",
+                        record.partition(), record.key(), record.value());
+                messageListModel.addElement(message);
+                messageCount--;
+                if (messageCount == 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private String getServerValueForEnvironment(String environment) {
+        if (environment.equals("dev")) {
+            return "dev:localhost:9096";
+        } else if (environment.equals("test")) {
+            return "test:localhost:9097";
+        } else if (environment.equals("preprod")) {
+            return "preprod:localhost:9098";
+        }
+        return null;
+    }
+
+    public void setEnvironmentList(List<String> environments) {
+        for (String environment : environments) {
+            serverComboBox.addItem(environment);
+        }
+    }
+
+    public void setKafkaProperties(Properties props) {
+        kafkaProps.putAll(props);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            KafkaConsumerUI consumerUI = new KafkaConsumerUI();
+            List<String> environments = Arrays.asList("dev", "test", "preprod");
+            consumerUI.setEnvironmentList(environments);
+            consumerUI.setSize(800, 600);
+            consumerUI.setVisible(true);
+        });
+    }
+}
