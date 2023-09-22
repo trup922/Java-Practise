@@ -1,0 +1,75 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+public class MouseMoverUI extends JFrame implements ActionListener {
+    private JButton startButton;
+    private JButton stopButton;
+    private Robot robot;
+    private boolean isMouseMoving;
+
+    public MouseMoverUI() {
+        // Initialize the JFrame
+        setTitle("Mouse Mover");
+        setSize(300, 100);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new FlowLayout());
+
+        // Initialize the buttons
+        startButton = new JButton("Start");
+        stopButton = new JButton("Stop");
+
+        // Add action listeners to the buttons
+        startButton.addActionListener(this);
+        stopButton.addActionListener(this);
+
+        // Add buttons to the JFrame
+        add(startButton);
+        add(stopButton);
+
+        // Initialize the Robot instance
+        try {
+            robot = new Robot();
+        } catch (AWTException e) {
+            e.printStackTrace();
+        }
+
+        // Initially, the mouse is not moving
+        isMouseMoving = false;
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == startButton) {
+            if (!isMouseMoving) {
+                // Start moving the mouse
+                isMouseMoving = true;
+                new Thread(() -> {
+                    Random random = new Random();
+                    while (isMouseMoving) {
+                        int x = random.nextInt(400);
+                        int y = random.nextInt(400);
+                        System.out.println("Mouse move to x=" + x + " and y=" + y + " position.");
+                        robot.mouseMove(x, y);
+                        try {
+                            Thread.sleep(10000); // Sleep for 10 seconds
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }).start();
+            }
+        } else if (e.getSource() == stopButton) {
+            // Stop moving the mouse
+            isMouseMoving = false;
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            MouseMoverUI mouseMoverUI = new MouseMoverUI();
+            mouseMoverUI.setVisible(true);
+        });
+    }
+}
