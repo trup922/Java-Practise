@@ -1,0 +1,144 @@
+public class NotificationRequest {
+    private int offset;
+    private int limitvalue;
+    private boolean archivedFlag;
+    private String countryCode;
+    private List<MerchantData> merchantDataList;
+
+    // Getters and setters
+
+    // Additional methods or assertions as needed
+
+    public static class MerchantData {
+        @JsonProperty("merchantId")
+        private String merchantId;
+
+        // Getters and setters
+    }
+}
+
+public class NotificationResponse {
+    private int totalCount;
+    private int unreadCount;
+    private List<NotificationData> notificationDataList;
+
+    // Getters and setters
+
+    // Additional methods or assertions as needed
+
+    public static class NotificationData {
+        private String userId;
+        private String merchantId;
+        private String notificationId;
+        private String eventId;
+        private String notificationType;
+        private String notificationTypeDesc;
+        private String notificationTimeStamp;
+        private String prefernceType;
+        private String prefernceTypeDesc;
+        private boolean readflag;
+        private boolean archivedFlag;
+        private int globalsSequenceId;
+        private String detailMessage;
+
+        // Getters and setters
+    }
+}
+
+public class YourApiTest {
+
+    @Test
+    public void testNotificationApi() {
+        RestAssured.baseURI = "https://dev.fi.com";
+
+        // Create the request object
+        NotificationRequest request = new NotificationRequest();
+        request.setOffset(0);
+        request.setLimitvalue(200);
+        request.setArchivedFlag(false);
+        request.setCountryCode("UK");
+
+        NotificationRequest.MerchantData merchantData = new NotificationRequest.MerchantData();
+        merchantData.setMerchantId("PO123456");
+
+        request.setMerchantDataList(List.of(merchantData));
+
+        // Make the POST request
+        Response response = given()
+                .contentType("application/json")
+                .body(request)
+            .when()
+                .post("/com-dash-notification/user-id/66612")
+            .then()
+                .statusCode(200)
+                .extract()
+                .response();
+
+        // Deserialize the response into NotificationResponse object
+        NotificationResponse notificationResponse = response.as(NotificationResponse.class);
+
+        // Perform assertions on the response
+        assertEquals(20, notificationResponse.getTotalCount());
+        assertEquals(22, notificationResponse.getUnreadCount());
+
+        // Perform additional assertions based on your requirements
+        // For example, you can check properties of the first notification in the list
+        NotificationResponse.NotificationData firstNotification = notificationResponse.getNotificationDataList().get(0);
+        assertEquals("66612", firstNotification.getUserId());
+        assertEquals("PO123456", firstNotification.getMerchantId());
+        // Add more assertions as needed
+    }
+}
+
+
+public class RequestHelper {
+
+    public static Response postNotificationRequest(NotificationRequest request, String userId) {
+        return given()
+                .contentType("application/json")
+                .body(request)
+            .when()
+                .post("/com-dash-notification/user-id/" + userId)
+            .then()
+                .statusCode(200)
+                .extract()
+                .response();
+    }
+}
+
+public class YourApiTest {
+
+    @Test
+    public void testNotificationApi() {
+        RestAssured.baseURI = "https://dev.fi.com";
+
+        // Create the request object
+        NotificationRequest request = new NotificationRequest();
+        request.setOffset(0);
+        request.setLimitvalue(200);
+        request.setArchivedFlag(false);
+        request.setCountryCode("UK");
+
+        NotificationRequest.MerchantData merchantData = new NotificationRequest.MerchantData();
+        merchantData.setMerchantId("PO123456");
+
+        request.setMerchantDataList(List.of(merchantData));
+
+        // Make the POST request using the helper method
+        Response response = RequestHelper.postNotificationRequest(request, "66612");
+
+        // Deserialize the response into NotificationResponse object
+        NotificationResponse notificationResponse = response.as(NotificationResponse.class);
+
+        // Perform assertions on the response
+        assertEquals(20, notificationResponse.getTotalCount());
+        assertEquals(22, notificationResponse.getUnreadCount());
+
+        // Perform additional assertions based on your requirements
+        // For example, you can check properties of the first notification in the list
+        NotificationResponse.NotificationData firstNotification = notificationResponse.getNotificationDataList().get(0);
+        assertEquals("66612", firstNotification.getUserId());
+        assertEquals("PO123456", firstNotification.getMerchantId());
+        // Add more assertions as needed
+    }
+}
